@@ -1,4 +1,4 @@
-import { Engine, Runner, Composite, Mouse, MouseConstraint, Body } from 'matter-js';
+import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies } from 'matter-js';
 import Ragdoll from './ragdoll';
 import Rectangle from './rectangle';
 
@@ -7,6 +7,12 @@ const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.94;
+
+let tool = 'grab';
+let balls: Body[] = [];
+let launcher:Constraint;
+let isLaunching = false;
+let isAiming = false; // only draw constraint while aiming
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -46,13 +52,53 @@ export const reset = () => {
         Composite.remove(engine.world, ragdoll.ragdoll);
     })
 
+    balls.forEach(ball => {
+        Composite.remove(engine.world, ball);
+    })
+
     ragdolls = [];
+    balls = [];
 }
 
-const drawCircle = (circle:Body) => {
+export const updateTool = () => {
+    let selectElement = document.getElementById('tool-select') as HTMLSelectElement;
+    tool = selectElement.value;
+
+    if(tool === 'grab') {
+        mouseConstraint.constraint.stiffness = 0.007;
+    }
+    else if(tool === 'ball') {
+        mouseConstraint.constraint.stiffness = 1;
+    }
+}
+
+Events.on(mouseConstraint, 'mousedown', (_) => {
+    if(tool === 'ball') {
+        let ball = Bodies.circle(mouse.position.x, mouse.position.y, 15, {restitution: 1});
+        balls.push(ball);
+
+        launcher = Constraint.create({
+            pointA: {x: mouse.position.x, y: mouse.position.y},
+            bodyB: ball,
+            stiffness: 0.005
+        });
+
+        Composite.add(engine.world, [ball, launcher]);
+
+        isAiming = true;
+    }
+});
+
+Events.on(mouseConstraint, 'mouseup', (_) => {
+    if(tool === 'ball') {
+        isLaunching = true;
+    }
+});
+
+const drawCircle = (circle:Body, color:string='DodgerBlue') => {
     ctx.beginPath();
     ctx.arc(circle.position.x, circle.position.y, circle.circleRadius as number, 0, 2 * Math.PI);
-    ctx.fillStyle = 'DodgerBlue';
+    ctx.fillStyle = color;
     ctx.fill();
 }
 
@@ -101,9 +147,21 @@ const drawMouseConstraint = () => {
     ctx.stroke();
 }
 
-const animate = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+const drawLauncher = () => {
+    ctx.beginPath();
+    ctx.moveTo(launcher.pointA.x, launcher.pointA.y);
+    ctx.lineTo(launcher.bodyB.position.x, launcher.bodyB.position.y);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'white';
+    ctx.stroke();
 
+    ctx.beginPath();
+    ctx.arc(launcher.bodyB.position.x, launcher.bodyB.position.y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+}
+
+const drawRagdolls = () => {
     ragdolls.forEach(ragdoll => {
         drawCircle(ragdoll.head);
         drawLine(ragdoll.body);
@@ -124,17 +182,38 @@ const animate = () => {
             }
         );
     });
+}
 
+const drawBalls = () => {
+    balls.forEach(ball => {
+        drawCircle(ball, '#FF7850');
+    });
+}
+
+Events.on(engine, 'afterUpdate', (_) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawRagdolls();
+    drawBalls();
     drawRect(ground, '#868686');
     drawRect(ceiling, '#868686');
     drawRect(leftWall, '#868686');
     drawRect(rightWall, '#868686');
 
-    if(mouseConstraint.body) {
-        drawMouseConstraint();
+    if(tool === 'grab') {
+        if(mouseConstraint.body) {
+            drawMouseConstraint();
+        }
     }
+    else if(tool === 'ball') {
+        if(isAiming) {
+            drawLauncher();
+        }
 
-    requestAnimationFrame(animate);
-}
-
-animate();
+        if(isLaunching && Math.abs(launcher.bodyB.position.x - launcher.pointA.x) < 20 && Math.abs(launcher.bodyB.position.y - launcher.pointA.y) < 20) {
+            Composite.remove(engine.world, launcher);
+            isLaunching = false;
+            isAiming = false;
+        }
+    }
+});
