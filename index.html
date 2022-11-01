@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>Ragdoll</title>
-    <script type="module" crossorigin src="./assets/index.1335ef7c.js"></script>
+    <script type="module" crossorigin src="./assets/index.4cbb0ccd.js"></script>
     <link rel="stylesheet" href="./assets/index.7aa8ce7f.css">
   </head>
   <body>
     <div id="menu">
       <button onclick="spawnRagdoll()">spawn</button>
-      <button onclick="reset()">reset</button>
+      <button onclick="reset()">reset</button> | 
+      <label>tool</label>
+      <select id="tool-select" onchange="updateTool()">
+        <option value="grab">grab</option>
+        <option value="ball">ball</option>
+      </select>
     </div>
     <canvas id="canvas"></canvas>
     
