@@ -1,6 +1,5 @@
-import { spawnRagdoll, reset, updateTool, updateMouseStrength } from './main';
+import { spawnRagdoll, reset, updateTool } from './main';
 
 window.spawnRagdoll = spawnRagdoll;
 window.reset = reset;
 window.updateTool = updateTool;
-window.updateMouseStrength = updateMouseStrength;

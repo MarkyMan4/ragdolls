@@ -1,4 +1,4 @@
-import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies } from 'matter-js';
+import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies, Query } from 'matter-js';
 import Ragdoll from './ragdoll';
 import Rectangle from './rectangle';
 
@@ -13,6 +13,7 @@ let balls: Body[] = [];
 let launcher:Constraint;
 let isLaunching = false;
 let isAiming = false; // only draw constraint while aiming
+let defaultMouseStifness = 0.02;
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -24,7 +25,7 @@ let leftWall = new Rectangle(-1000, canvas.height / 2, 2020, canvas.height + 100
 let rightWall = new Rectangle(canvas.width + 1000, canvas.height / 2, 2020, canvas.height + 1000, {isStatic: true});
 
 let mouse = Mouse.create(canvas);
-let mouseConstraint = MouseConstraint.create(engine, {mouse: mouse, constraint: {stiffness: 0.007}});
+let mouseConstraint = MouseConstraint.create(engine, {mouse: mouse, constraint: {stiffness: defaultMouseStifness}});
 
 Composite.add(engine.world, [
     ground.rect,
@@ -65,16 +66,11 @@ export const updateTool = () => {
     tool = selectElement.value;
 
     if(tool === 'grab') {
-        mouseConstraint.constraint.stiffness = 0.007;
+        mouseConstraint.constraint.stiffness = defaultMouseStifness;
     }
     else if(tool === 'ball') {
         mouseConstraint.constraint.stiffness = 1;
     }
-}
-
-export const updateMouseStrength = () => {
-    let mouseStrengthInp = document.getElementById('mouse-strength-input') as HTMLInputElement;
-    mouseConstraint.constraint.stiffness = parseFloat(mouseStrengthInp.value);
 }
 
 Events.on(mouseConstraint, 'mousedown', (_) => {
@@ -91,6 +87,29 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
         Composite.add(engine.world, [ball, launcher]);
 
         isAiming = true;
+    }
+    else if(tool === 'explode') {
+        let bodies: Body[] = [];
+
+        ragdolls.forEach(ragdoll => {
+            bodies.push(ragdoll.body.rect);
+        });
+
+        balls.forEach(ball => {
+            bodies.push(ball);
+        });
+
+        let blastRadius = 200;
+
+        for(let i = 0; i < 360; i += 5) {
+            let x = blastRadius * Math.cos(i * Math.PI / 180);
+            let y = blastRadius * Math.sin(i * Math.PI / 180);
+            let collisions = Query.ray(bodies, {x: mouse.position.x, y: mouse.position.y}, {x: x + mouse.position.x, y: y + mouse.position.y});
+
+            collisions.forEach(c => {
+                Body.applyForce(c.bodyB, {x: c.bodyB.position.x, y: c.bodyB.position.y}, {x: x / 2000, y: y / 2000});
+            });
+        }
     }
 });
 
@@ -195,9 +214,27 @@ const drawBalls = () => {
     });
 }
 
+// turn this on to debug explosion
+// const drawRays = () => {
+//     let radius = 200;
+
+//     for(let i = 0; i < 360; i += 5) {
+//         let x = (radius * Math.cos(i * Math.PI / 180)) + (mouse.position.x);
+//         let y = (radius * Math.sin(i * Math.PI / 180)) + (mouse.position.y);
+
+//         ctx.beginPath();
+//         ctx.moveTo(mouse.position.x, mouse.position.y);
+//         ctx.lineTo(x, y);
+//         ctx.strokeStyle = 'white';
+//         ctx.lineWidth = 1;
+//         ctx.stroke();
+//     }
+// }
+
 Events.on(engine, 'afterUpdate', (_) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // drawRays();
     drawRagdolls();
     drawBalls();
     drawRect(ground, '#868686');
