@@ -1,6 +1,7 @@
 import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies, Query } from 'matter-js';
 import Ragdoll from './ragdoll';
 import Rectangle from './rectangle';
+import Particle from './particle';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
@@ -14,6 +15,8 @@ let launcher:Constraint;
 let isLaunching = false;
 let isAiming = false; // only draw constraint while aiming
 let defaultMouseStifness = 0.02;
+
+let particles: Particle[] = [];
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -73,6 +76,13 @@ export const updateTool = () => {
     }
 }
 
+const spawnExplosionParticles = (x: number, y: number) => {
+    for(let i = 0; i < 100; i++) {
+        let color = Math.random() < 0.5 ? 'red' : 'orange';
+        particles.push(new Particle(x, y, color));
+    }
+}
+
 Events.on(mouseConstraint, 'mousedown', (_) => {
     if(tool === 'ball') {
         let ball = Bodies.circle(mouse.position.x, mouse.position.y, 15, {restitution: 1});
@@ -89,6 +99,8 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
         isAiming = true;
     }
     else if(tool === 'explode') {
+        spawnExplosionParticles(mouse.position.x, mouse.position.y);
+
         let bodies: Body[] = [];
 
         ragdolls.forEach(ragdoll => {
@@ -214,6 +226,22 @@ const drawBalls = () => {
     });
 }
 
+const drawAndUpdateParticles = () => {
+    particles.forEach((p, idx) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        p.update();
+
+        // if the particle size is less than 0.2, remove it
+        if(p.radius < 0.2) {
+            particles.splice(idx, 1);
+        }
+    })
+}
+
 // turn this on to debug explosion
 // const drawRays = () => {
 //     let radius = 200;
@@ -241,6 +269,7 @@ Events.on(engine, 'afterUpdate', (_) => {
     drawRect(ceiling, '#868686');
     drawRect(leftWall, '#868686');
     drawRect(rightWall, '#868686');
+    drawAndUpdateParticles();
 
     if(tool === 'grab') {
         if(mouseConstraint.body) {
