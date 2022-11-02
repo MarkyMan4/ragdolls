@@ -72,6 +72,11 @@ export const updateTool = () => {
     }
 }
 
+export const updateMouseStrength = () => {
+    let mouseStrengthInp = document.getElementById('mouse-strength-input') as HTMLInputElement;
+    mouseConstraint.constraint.stiffness = parseFloat(mouseStrengthInp.value);
+}
+
 Events.on(mouseConstraint, 'mousedown', (_) => {
     if(tool === 'ball') {
         let ball = Bodies.circle(mouse.position.x, mouse.position.y, 15, {restitution: 1});
