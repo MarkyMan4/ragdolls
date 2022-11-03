@@ -17,6 +17,9 @@ let isAiming = false; // only draw constraint while aiming
 let defaultMouseStifness = 0.02;
 
 let particles: Particle[] = [];
+let blocks: Rectangle[] = [];
+let grapples: Constraint[] = [];
+let grappleBody: any = null;
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -54,14 +57,29 @@ export const spawnRagdoll = () => {
 export const reset = () => {
     ragdolls.forEach(ragdoll => {
         Composite.remove(engine.world, ragdoll.ragdoll);
-    })
-
-    balls.forEach(ball => {
-        Composite.remove(engine.world, ball);
-    })
+    });
 
     ragdolls = [];
+
+    clearObjects();
+}
+
+export const clearObjects = () => {
+    balls.forEach(ball => {
+        Composite.remove(engine.world, ball);
+    });
+
+    blocks.forEach(block => {
+        Composite.remove(engine.world, block.rect);
+    });
+
+    grapples.forEach(grapple => {
+        Composite.remove(engine.world, grapple);
+    });
+
     balls = [];
+    blocks = [];
+    grapples = [];
 }
 
 export const updateTool = () => {
@@ -121,6 +139,26 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
             collisions.forEach(c => {
                 Body.applyForce(c.bodyB, {x: c.bodyB.position.x, y: c.bodyB.position.y}, {x: x / 2000, y: y / 2000});
             });
+        }
+    }
+    else if(tool === 'block') {
+        let block = new Rectangle(mouse.position.x, mouse.position.y, 100, 100, {density: 1, friction: 1, frictionAir: 0});
+        blocks.push(block);
+        Composite.add(engine.world, block.rect);
+    }
+    else if(tool === 'grapple') {
+        if(mouseConstraint.body) {
+            if(!grappleBody) {
+                grappleBody = mouseConstraint.body;
+            }
+            else {
+                let grapple = Constraint.create({bodyA: grappleBody, bodyB: mouseConstraint.body, length: 50, stiffness: 0.01});
+                grapples.push(grapple);
+                Composite.add(engine.world, grapple);
+
+                // reset the grapple body
+                grappleBody = null;
+            }
         }
     }
 });
@@ -183,6 +221,17 @@ const drawMouseConstraint = () => {
     ctx.stroke();
 }
 
+const drawGrapples = () => {
+    grapples.forEach(grapple => {
+        ctx.beginPath();
+        ctx.moveTo(grapple.bodyA.position.x, grapple.bodyA.position.y);
+        ctx.lineTo(grapple.bodyB.position.x, grapple.bodyB.position.y);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+    });
+}
+
 const drawLauncher = () => {
     ctx.beginPath();
     ctx.moveTo(launcher.pointA.x, launcher.pointA.y);
@@ -242,6 +291,12 @@ const drawAndUpdateParticles = () => {
     })
 }
 
+const drawBlocks = () => {
+    blocks.forEach(block => {
+        drawRect(block, 'white');
+    });
+}
+
 // turn this on to debug explosion
 // const drawRays = () => {
 //     let radius = 200;
@@ -265,6 +320,8 @@ Events.on(engine, 'afterUpdate', (_) => {
     // drawRays();
     drawRagdolls();
     drawBalls();
+    drawBlocks();
+    drawGrapples();
     drawRect(ground, '#868686');
     drawRect(ceiling, '#868686');
     drawRect(leftWall, '#868686');
