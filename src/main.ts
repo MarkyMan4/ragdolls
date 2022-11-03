@@ -20,6 +20,8 @@ let particles: Particle[] = [];
 let blocks: Rectangle[] = [];
 let grapples: Constraint[] = [];
 let grappleBody: any = null;
+let pins: Constraint[] = [];
+let bodyToPin: any = null;
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -77,9 +79,14 @@ export const clearObjects = () => {
         Composite.remove(engine.world, grapple);
     });
 
+    pins.forEach(pin => {
+        Composite.remove(engine.world, pin);
+    });
+
     balls = [];
     blocks = [];
     grapples = [];
+    pins = [];
 }
 
 export const updateTool = () => {
@@ -161,11 +168,27 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
             }
         }
     }
+    else if(tool === 'pin') {
+        bodyToPin = mouseConstraint.body;
+    }
 });
 
 Events.on(mouseConstraint, 'mouseup', (_) => {
     if(tool === 'ball') {
         isLaunching = true;
+    }
+    else if(tool === 'pin') {
+        if(bodyToPin) {
+            let pin = Constraint.create({
+                bodyA: bodyToPin, 
+                pointB: {x: mouse.position.x, y: mouse.position.y},
+                stiffness: 0.01,
+                length: 10
+            });
+
+            Composite.add(engine.world, pin);
+            pins.push(pin);
+        }
     }
 });
 
@@ -226,6 +249,17 @@ const drawGrapples = () => {
         ctx.beginPath();
         ctx.moveTo(grapple.bodyA.position.x, grapple.bodyA.position.y);
         ctx.lineTo(grapple.bodyB.position.x, grapple.bodyB.position.y);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+    });
+}
+
+const drawPins = () => {
+    pins.forEach(pin => {
+        ctx.beginPath();
+        ctx.moveTo(pin.bodyA.position.x, pin.bodyA.position.y);
+        ctx.lineTo(pin.pointB.x, pin.pointB.y);
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'white';
         ctx.stroke();
@@ -322,6 +356,7 @@ Events.on(engine, 'afterUpdate', (_) => {
     drawBalls();
     drawBlocks();
     drawGrapples();
+    drawPins();
     drawRect(ground, '#868686');
     drawRect(ceiling, '#868686');
     drawRect(leftWall, '#868686');
