@@ -23,6 +23,9 @@ let grappleBody: any = null;
 let pins: Constraint[] = [];
 let bodyToPin: any = null;
 
+let gravityOn = true;
+let defaultGravity = 1;
+
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
 
@@ -171,6 +174,16 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
     else if(tool === 'pin') {
         bodyToPin = mouseConstraint.body;
     }
+    else if(tool === 'antiGravity') {
+        gravityOn = !gravityOn;
+
+        if(gravityOn) {
+            engine.gravity = {x: 0, y: defaultGravity, scale: 0.001};
+        }
+        else {
+            engine.gravity = {x: 0, y: 0, scale: 0.001};
+        }
+    }
 });
 
 Events.on(mouseConstraint, 'mouseup', (_) => {
@@ -289,17 +302,20 @@ const drawRagdolls = () => {
         drawLine(ragdoll.leftArm);
         drawLine(ragdoll.rightArm);
 
-        Body.applyForce(
-            ragdoll.head, 
-            {
-                x: ragdoll.head.position.x, 
-                y: ragdoll.head.position.y
-            }, 
-            {
-                x: 0, 
-                y: -0.002
-            }
-        );
+        // apply upward force to make them stay upright
+        if(gravityOn) {
+            Body.applyForce(
+                ragdoll.head, 
+                {
+                    x: ragdoll.head.position.x, 
+                    y: ragdoll.head.position.y
+                }, 
+                {
+                    x: 0, 
+                    y: -0.002
+                }
+            );
+        }
     });
 }
 
