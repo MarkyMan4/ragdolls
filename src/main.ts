@@ -2,6 +2,7 @@ import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constr
 import Ragdoll from './ragdoll';
 import Rectangle from './rectangle';
 import Particle from './particle';
+import Web from './web';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
@@ -25,6 +26,8 @@ let bodyToPin: any = null;
 
 let gravityOn = true;
 let defaultGravity = 1;
+
+let webs: Web[] = [];
 
 let engine = Engine.create({gravity: {x: 0, y: 1}});
 let runner = Runner.create();
@@ -86,10 +89,15 @@ export const clearObjects = () => {
         Composite.remove(engine.world, pin);
     });
 
+    webs.forEach(web => {
+        Composite.remove(engine.world, web.web);
+    });
+
     balls = [];
     blocks = [];
     grapples = [];
     pins = [];
+    webs = [];
 }
 
 export const updateTool = () => {
@@ -183,6 +191,11 @@ Events.on(mouseConstraint, 'mousedown', (_) => {
         else {
             engine.gravity = {x: 0, y: 0, scale: 0.001};
         }
+    }
+    else if(tool === 'web') {
+        let web = new Web(mouse.position.x, mouse.position.y, canvas)
+        webs.push(web);
+        Composite.add(engine.world, web.web);
     }
 });
 
@@ -347,22 +360,11 @@ const drawBlocks = () => {
     });
 }
 
-// turn this on to debug explosion
-// const drawRays = () => {
-//     let radius = 200;
-
-//     for(let i = 0; i < 360; i += 5) {
-//         let x = (radius * Math.cos(i * Math.PI / 180)) + (mouse.position.x);
-//         let y = (radius * Math.sin(i * Math.PI / 180)) + (mouse.position.y);
-
-//         ctx.beginPath();
-//         ctx.moveTo(mouse.position.x, mouse.position.y);
-//         ctx.lineTo(x, y);
-//         ctx.strokeStyle = 'white';
-//         ctx.lineWidth = 1;
-//         ctx.stroke();
-//     }
-// }
+const drawWebs = () => {
+    webs.forEach(web => {
+        web.draw();
+    });
+}
 
 Events.on(engine, 'afterUpdate', (_) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -373,6 +375,7 @@ Events.on(engine, 'afterUpdate', (_) => {
     drawBlocks();
     drawGrapples();
     drawPins();
+    drawWebs();
     drawRect(ground, '#868686');
     drawRect(ceiling, '#868686');
     drawRect(leftWall, '#868686');
