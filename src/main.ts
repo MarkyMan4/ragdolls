@@ -1,4 +1,4 @@
-import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies, Query } from 'matter-js';
+import { Engine, Runner, Composite, Mouse, MouseConstraint, Body, Events, Constraint, Bodies, Query, Collision } from 'matter-js';
 import Ragdoll from './ragdoll';
 import Rectangle from './rectangle';
 import Particle from './particle';
@@ -10,6 +10,7 @@ const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.94;
 
+let counter = 0; // keep track of time elapsed
 let tool = 'grab';
 let balls: Body[] = [];
 let launcher:Constraint;
@@ -218,6 +219,64 @@ Events.on(mouseConstraint, 'mouseup', (_) => {
     }
 });
 
+Events.on(runner, 'afterTick', (_) => {
+    if(gravityOn) { 
+        if(counter >= 90) { // every 2 seconds
+            ragdolls.forEach(ragdoll => {
+                if(ragdollIsTouchingGround(ragdoll)) {
+                    Body.applyForce(
+                        ragdoll.head, 
+                        {
+                            x: ragdoll.head.position.x, 
+                            y: ragdoll.head.position.y
+                        }, 
+                        {
+                            x: 0, 
+                            y: -0.03
+                        }
+                    );
+                    Body.applyForce(
+                        ragdoll.leftArm.rect, 
+                        {
+                            x: ragdoll.leftArm.rect.position.x, 
+                            y: ragdoll.leftArm.rect.position.y
+                        }, 
+                        {
+                            x: -0.002, 
+                            y: -0.005
+                        }
+                    );
+
+                    Body.applyForce(
+                        ragdoll.rightArm.rect, 
+                        {
+                            x: ragdoll.rightArm.rect.position.x, 
+                            y: ragdoll.rightArm.rect.position.y
+                        }, 
+                        {
+                            x: 0.002, 
+                            y: -0.005
+                        }
+                    );
+                }
+            });
+
+            counter = 0;
+        }
+        else {
+            counter++;
+        }
+    }
+});
+
+const ragdollIsTouchingGround = (ragdoll: Ragdoll) => {
+    return Collision.collides(ragdoll.leftLeg.rect, ground.rect, null)
+        || Collision.collides(ragdoll.rightLeg.rect, ground.rect, null)
+        || Collision.collides(ragdoll.leftArm.rect, ground.rect, null)
+        || Collision.collides(ragdoll.rightArm.rect, ground.rect, null)
+        || Collision.collides(ragdoll.body.rect, ground.rect, null);
+}
+
 const drawCircle = (circle:Body, color:string='DodgerBlue') => {
     ctx.beginPath();
     ctx.arc(circle.position.x, circle.position.y, circle.circleRadius as number, 0, 2 * Math.PI);
@@ -316,7 +375,7 @@ const drawRagdolls = () => {
         drawLine(ragdoll.rightArm);
 
         // apply upward force to make them stay upright
-        if(gravityOn) {
+        if(gravityOn && ragdollIsTouchingGround(ragdoll)) {
             Body.applyForce(
                 ragdoll.head, 
                 {
